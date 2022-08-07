@@ -1,0 +1,52 @@
+Option Explicit
+
+Private Sub Workbook_Open()
+    
+    If ActiveSheet.Name = "Active patients" Then
+        oldvalues = UpdateCache(ActiveSheet)
+        oldtableheader = StoreHeader(ActiveSheet)
+    End If
+    
+End Sub
+
+
+'Create change log. NB: This is a log of all attempted changes, _
+as it records all changes made by user even if they are immediately rolled back by the Worksheet_Change macro in the Active patient worksheet
+Private Sub Workbook_SheetChange(ByVal Sh As Object, ByVal Target As Range)
+    
+    Dim objFSO As Object
+    Dim objFile As Object
+    Set objFSO = CreateObject("Scripting.FileSystemObject")
+    
+    'Check if the file exists
+    Dim strFileName As String
+    Dim strFileExists As String
+    strFileName = "ENTER YOUR PATH"
+    strFileExists = Dir(strFileName)
+    
+    If strFileExists = "" Then
+        Set objFile = objFSO.CreateTextFile(strFileName, False)
+    Else
+        Set objFile = objFSO.OpenTextFile(strFileName, ForAppending)
+    End If
+    
+    'Get the last done action from the undo stack
+    Dim lastUndoStackItem As String
+    On Error Resume Next
+        lastUndoStackItem = Application.CommandBars("Standard").FindControl(ID:=128).List(1)
+    
+    objFile.WriteLine ("Time: " & Now())
+    objFile.WriteLine ("Username: " & Application.UserName)
+    objFile.WriteLine ("Worksheet: " & Sh.Name)
+    objFile.WriteLine ("Action: " & lastUndoStackItem)
+    
+    Dim cl As Variant
+    For Each cl In Target
+        objFile.WriteLine (CStr(cl.Address) & " " & CStr(cl.Value))
+    Next cl
+    
+    objFile.WriteBlankLines (1)
+    
+    objFile.Close
+    
+End Sub
